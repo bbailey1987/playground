@@ -34,7 +34,9 @@ import * as _ from 'lodash';
 import * as $ from 'jquery';
 //import * as fileReader from 'pull-file-reader';
 
-const node = new IPFS({});
+const node = new IPFS({
+  repo : 'nolascape'
+});
 //const validCID = 'Qmb44Ht6Ws65rkEsaH4c43JoALVXhVUoq8MGkS12SF1N5H'; // 6 sample datasets
 const validCID = 'QmTengyUmb1FVbDoPJDTAW3HFrDoru7FYcouSeM3QMkaLh'; // 2 sample datasets
 
