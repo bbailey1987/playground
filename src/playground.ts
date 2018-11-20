@@ -25,9 +25,18 @@ import {
   getKeyFromValue,
   Problem
 } from "./state";
-import {Example2D, shuffle} from "./dataset";
+import {Example2D, shuffle, ipfsDataset, getDataset, ProblemType} from "./dataset";
 import {AppendingLineChart} from "./linechart";
 import * as d3 from 'd3';
+import * as IPFS from 'ipfs';
+import * as Papa from 'papaparse';
+import * as _ from 'lodash';
+import * as $ from 'jquery';
+//import * as fileReader from 'pull-file-reader';
+
+const node = new IPFS({});
+//const validCID = 'Qmb44Ht6Ws65rkEsaH4c43JoALVXhVUoq8MGkS12SF1N5H'; // 6 sample datasets
+const validCID = 'QmTengyUmb1FVbDoPJDTAW3HFrDoru7FYcouSeM3QMkaLh'; // 2 sample datasets
 
 let mainWidth;
 
@@ -49,8 +58,8 @@ function scrollTween(offset) {
 
 const RECT_SIZE = 30;
 const BIAS_SIZE = 5;
-const NUM_SAMPLES_CLASSIFY = 500;
-const NUM_SAMPLES_REGRESS = 1200;
+//const NUM_SAMPLES_CLASSIFY = 500;
+//const NUM_SAMPLES_REGRESS = 1200;
 const DENSITY = 100;
 
 enum HoverType {
@@ -201,45 +210,131 @@ function makeGUI() {
     oneStep();
   });
 
+  $('#fileid').change(e => {
+    // Update UI with file data
+    // Simultaneously upload data to IPFS for persistence
+    e.stopPropagation()
+    e.preventDefault()
+    const file = e.target.files[0];
+    Papa.parse(file, {
+      complete: function(results) {
+        // Parse data
+        // Update data structures
+        // Add HTML to DOM w/ events and proper attributes
+        // TODO: Automatically determine if the first row contains column labels
+        const table = results.data.slice(1);
+        const name = file.name.slice(0,-4).replace('-', '_');
+        const points: Example2D[] = [];
+        table.forEach(row => {
+          points.push({
+            x: row[0],
+            y: row[1],
+            label: row[2]
+          });
+        });
+        const type = (points[0].label == 1 || points[0].label == -1) ? Problem.CLASSIFICATION : Problem.REGRESSION;
+        type === Problem.CLASSIFICATION ? datasets.push(name) : regDatasets.push(name);
+        ipfsDataset.push({
+          name: name,
+          type: type,
+          data: points
+        });
+        // TODO: Cleanup this code
+        const thumbnail = $('.dataset').first().clone(true);
+        thumbnail.prependTo('#datavisuals');
+        let canvas = thumbnail.children().first();
+        let data;
+        if (type === Problem.CLASSIFICATION) {
+          if (canvas.attr('data-regDataset')) {
+            canvas.removeAttr('data-regDataset');
+          }
+          canvas = canvas.attr('data-dataset', name)[0];
+          state.dataset =  getDataset(name).name;
+          data = getDataset(canvas.dataset.dataset).data;
+        } else {
+          if (canvas.attr('data-dataset')) {
+            canvas.removeAttr('data-dataset');
+          }
+          canvas = canvas.attr('data-regDataset', name)[0];
+          state.regDataset = getDataset(name).name;
+          data = getDataset(canvas.dataset.regdataset).data;
+        }
+
+        let w = 100;
+        let h = 100;
+        
+        canvas.setAttribute("width", w);
+        canvas.setAttribute("height", h);
+        let context = canvas.getContext("2d");
+        //let data = getDataset(canvas.dataset.dataset || canvas.dataset.regdataset).data;
+        data.forEach(function(d) {
+          context.fillStyle = colorScale(d.label);
+          context.fillRect(50 + w * (d.x + 6) / 12, 50 + h * (d.y + 6) / 12, 4, 4);
+        });
+        d3.select(canvas.parentNode).style("display", null);
+        
+        canvas = $(canvas);
+        canvas.click(() => {
+          //state.dataset =  getDataset(name).name;
+          $('.data-thumbnail').removeClass('selected');
+          canvas.addClass('selected');
+          generateData();
+          parametersChanged = true;
+          reset();
+        });
+        canvas.click();
+      }
+    });
+    
+    
+    node.files.add(file, { progress: (prog) => console.log(`received: ${prog}`) })
+      .then(response => {
+        // TODO: Add proper dataset so UI can render it
+        console.log('response', response);
+        //console.log('fileStream', Papa.parse(fileStream));
+        
+      });
+  });
+
   d3.select("#data-regen-button").on("click", () => {
+    $('#fileid').click();
     generateData();
     parametersChanged = true;
   });
 
-  let dataThumbnails = d3.selectAll("canvas[data-dataset]");
-  dataThumbnails.on("click", function() {
-    let newDataset = datasets[this.dataset.dataset];
-    if (newDataset === state.dataset) {
-      return; // No-op.
+  $('.data-thumbnail').click((e)=> {
+    let self = $(e.target)[0];
+    console.log('self.dataset', self.dataset);
+    // TODO: If a user uploads a Regression dataset while on classification tab (and vice versa), automatically switch over and update GUI
+    if (state.problem === Problem.CLASSIFICATION) {
+      let newDataset = getDataset(self.dataset.dataset).name;
+      if (newDataset === state.dataset) {
+        return; // No-op.
+      }
+      state.dataset = newDataset;
+    } else {
+      let newDataset = getDataset(self.dataset.regdataset).name;
+      if (newDataset === state.regDataset) {
+        return; // No-op.
+      }
+      state.regDataset = newDataset;
     }
-    state.dataset =  newDataset;
-    dataThumbnails.classed("selected", false);
-    d3.select(this).classed("selected", true);
+    $('.data-thumbnail').removeClass('selected');
+    $(self).addClass('selected');
     generateData();
     parametersChanged = true;
     reset();
   });
 
-  let datasetKey = getKeyFromValue(datasets, state.dataset);
+  //let datasetKey = getKeyFromValue(datasets, state.dataset);
+  let datasetKey = state.dataset;
   // Select the dataset according to the current state.
   d3.select(`canvas[data-dataset=${datasetKey}]`)
     .classed("selected", true);
 
-  let regDataThumbnails = d3.selectAll("canvas[data-regDataset]");
-  regDataThumbnails.on("click", function() {
-    let newDataset = regDatasets[this.dataset.regdataset];
-    if (newDataset === state.regDataset) {
-      return; // No-op.
-    }
-    state.regDataset =  newDataset;
-    regDataThumbnails.classed("selected", false);
-    d3.select(this).classed("selected", true);
-    generateData();
-    parametersChanged = true;
-    reset();
-  });
-
-  let regDatasetKey = getKeyFromValue(regDatasets, state.regDataset);
+  //let regDatasetKey = getKeyFromValue(regDatasets, state.regDataset);
+  let regDatasetKey = state.regDataset;
+  //console.log('regDatasets', regDatasets);
   // Select the dataset according to the current state.
   d3.select(`canvas[data-regDataset=${regDatasetKey}]`)
     .classed("selected", true);
@@ -991,36 +1086,50 @@ function initTutorial() {
 }
 
 function drawDatasetThumbnails() {
-  function renderThumbnail(canvas, dataGenerator) {
+  function renderThumbnail(canvas) {
     let w = 100;
     let h = 100;
+    console.log('canvas', canvas);
+    console.log('datasets', datasets);
     canvas.setAttribute("width", w);
     canvas.setAttribute("height", h);
     let context = canvas.getContext("2d");
-    let data = dataGenerator(200, 0);
+    //let data = dataGenerator(200, 0);
+    // TODO: Change this logic in the ext line to get the right dataset 
+    let data;
+    if (state.problem === Problem.CLASSIFICATION) {
+      data = getDataset(canvas.dataset.dataset).data;
+    } else {
+      data = getDataset(canvas.dataset.regdataset).data;
+    }
+    
     data.forEach(function(d) {
       context.fillStyle = colorScale(d.label);
-      context.fillRect(w * (d.x + 6) / 12, h * (d.y + 6) / 12, 4, 4);
+      context.fillRect(50 + (w * (d.x + 6) / 12), 50 + (h * (d.y + 12) / 12) , 4, 4);
     });
     d3.select(canvas.parentNode).style("display", null);
   }
   d3.selectAll(".dataset").style("display", "none");
 
   if (state.problem === Problem.CLASSIFICATION) {
-    for (let dataset in datasets) {
+    datasets.forEach(dataset => {
+      console.log('dataset HERE', dataset);
       let canvas: any =
           document.querySelector(`canvas[data-dataset=${dataset}]`);
-      let dataGenerator = datasets[dataset];
-      renderThumbnail(canvas, dataGenerator);
-    }
+      //let dataGenerator = datasets[dataset];
+      console.log('canvas HERE', canvas);
+      renderThumbnail(canvas);
+    });
   }
+  console.log('regDatasets', regDatasets);
   if (state.problem === Problem.REGRESSION) {
-    for (let regDataset in regDatasets) {
+    regDatasets.forEach(dataset => {
+      console.log('regDataset', dataset);
       let canvas: any =
-          document.querySelector(`canvas[data-regDataset=${regDataset}]`);
-      let dataGenerator = regDatasets[regDataset];
-      renderThumbnail(canvas, dataGenerator);
-    }
+          document.querySelector(`canvas[data-regDataset=${dataset}]`);
+      //let dataGenerator = regDatasets[regDataset];
+      renderThumbnail(canvas);
+    });
   }
 }
 
@@ -1072,12 +1181,13 @@ function generateData(firstTime = false) {
     userHasInteracted();
   }
   Math.seedrandom(state.seed);
-  let numSamples = (state.problem === Problem.REGRESSION) ?
-      NUM_SAMPLES_REGRESS : NUM_SAMPLES_CLASSIFY;
-  let generator = state.problem === Problem.CLASSIFICATION ?
-      state.dataset : state.regDataset;
-  let data = generator(numSamples, state.noise / 100);
+  console.log('state', state);
+  //let data = generator(numSamples, state.noise / 100);
+  let name = state.problem === Problem.CLASSIFICATION ? state.dataset : state.regDataset;
+
+  const data = getDataset(name).data;
   // Shuffle the data in-place.
+  
   shuffle(data);
   // Split into train and test data.
   let splitIndex = Math.floor(data.length * state.percTrainData / 100);
@@ -1113,9 +1223,38 @@ function simulationStarted() {
   parametersChanged = false;
 }
 
-drawDatasetThumbnails();
-initTutorial();
-makeGUI();
-generateData(true);
-reset(true);
-hideControls();
+node.once('ready', () => {
+  console.log('IPFS Ready!');
+  
+  node.files.get(validCID, (err, files) => {
+    _.remove(files, file => {
+      return file['type'] !== 'file';
+    });
+    _.forEach(files, file => {
+      file.name = file.name.slice(0,-4).replace('-', '_');
+      const points: Example2D[] = [];
+        Papa.parse(file.content.toString()).data.slice(1).forEach(point => {
+          points.push({
+            x: point[0],
+            y: point[1],
+            label: point[2]
+          });
+        });
+        //datasets.push(file.name);
+        // TODO: Generalize this to make sure we can handle any file from IPFS
+        ipfsDataset.push({
+          name: file.name,
+          type: (points[0].label == 1 || points[0].label == -1) ? Problem.CLASSIFICATION : Problem.REGRESSION,
+          data: points
+        });
+    });
+
+    console.log('ipfsDataset', ipfsDataset);
+    drawDatasetThumbnails();
+    initTutorial();
+    makeGUI();
+    generateData(true);
+    reset(true);
+    hideControls();
+  });
+});

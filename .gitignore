@@ -2,3 +2,8 @@ node_modules/
 dist/
 *.log
 .vscode
+.DS_Store
+.firebase
+.firebaserc
+database.rules.json
+firebase.json

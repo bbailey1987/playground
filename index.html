@@ -38,6 +38,18 @@ limitations under the License.
   <title>A Neural Network Playground</title>
   <link rel="stylesheet" href="bundle.css" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons" rel="stylesheet" type="text/css">
+  <script src="https://www.gstatic.com/firebasejs/5.5.8/firebase.js"></script>
+  <script>
+    var config = {
+      apiKey: "AIzaSyCDu-I42ogLShYUj1UN2cyUbUD9V2XcjHc",
+      authDomain: "nolascape.firebaseapp.com",
+      databaseURL: "https://nolascape.firebaseio.com",
+      projectId: "nolascape",
+      storageBucket: "nolascape.appspot.com",
+      messagingSenderId: "267052376276"
+    };
+    firebase.initializeApp(config);
+  </script>
   <script src="lib.js"></script>
 </head>
 <body>
@@ -50,7 +62,7 @@ limitations under the License.
   </a>
   <!-- Header -->
   <header>
-    <h1 class="l--page">Tinker With a <b>Neural Network</b> <span class="optional">Right Here </span>in Your Browser.<br>Don’t Worry, You Can’t Break It. We Promise.</h1>
+    <h1 class="l--page">IPFS + Tensorflow = <b>Awesomeness!</b></h1>
   </header>
 
   <!-- Top Controls -->
@@ -150,24 +162,12 @@ limitations under the License.
       </h4>
       <div class="ui-dataset">
         <p>Which dataset do you want to use?</p>
-        <div class="dataset-list">
-          <div class="dataset" title="Circle">
-            <canvas class="data-thumbnail" data-dataset="circle"></canvas>
-          </div>
-          <div class="dataset" title="Exclusive or">
-            <canvas class="data-thumbnail" data-dataset="xor"></canvas>
-          </div>
-          <div class="dataset" title="Gaussian">
-            <canvas class="data-thumbnail" data-dataset="gauss"></canvas>
-          </div>
+        <div id="datavisuals" class="dataset-list">
           <div class="dataset" title="Spiral">
             <canvas class="data-thumbnail" data-dataset="spiral"></canvas>
           </div>
-          <div class="dataset" title="Plane">
-            <canvas class="data-thumbnail" data-regDataset="reg-plane"></canvas>
-          </div>
           <div class="dataset" title="Multi gaussian">
-            <canvas class="data-thumbnail" data-regDataset="reg-gauss"></canvas>
+            <canvas class="data-thumbnail" data-regDataset="reg_gauss"></canvas>
           </div>
         </div>
       </div>
@@ -190,8 +190,9 @@ limitations under the License.
             <input class="mdl-slider mdl-js-slider" type="range" id="batchSize" min="1" max="30" step="1">
           </p>
         </div>
+          <input id='fileid' type='file' hidden/>
           <button class="basic-button" id="data-regen-button" title="Regenerate data">
-            Regenerate
+            Upload
           </button>
       </div>
     </div>

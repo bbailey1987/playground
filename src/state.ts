@@ -35,18 +35,27 @@ export let regularizations: {[key: string]: nn.RegularizationFunction} = {
 };
 
 /** A map between dataset names and functions that generate classification data. */
+// We want this to be dataset.getData(name: string)
+/*
 export let datasets: {[key: string]: dataset.DataGenerator} = {
   "circle": dataset.classifyCircleData,
   "xor": dataset.classifyXORData,
   "gauss": dataset.classifyTwoGaussData,
   "spiral": dataset.classifySpiralData,
 };
-
-/** A map between dataset names and functions that generate regression data. */
+*/
+/** A map between dataset names and functions that generate regression data.*/ 
+/*
 export let regDatasets: {[key: string]: dataset.DataGenerator} = {
-  "reg-plane": dataset.regressPlane,
-  "reg-gauss": dataset.regressGaussian
+  "reg_plane": dataset.regressPlane,
+  "reg_gauss": dataset.regressGaussian
 };
+*/
+//export let datasets = ['circle', 'gauss', 'spiral', 'xor']
+//export let regDatasets = ['reg_plane', 'reg_gauss'];
+
+export let datasets = ['spiral'];
+export let regDatasets = ['reg_gauss'];
 
 export function getKeyFromValue(obj: any, value: any): string {
   for (let key in obj) {
@@ -107,8 +116,8 @@ export class State {
     {name: "activation", type: Type.OBJECT, keyMap: activations},
     {name: "regularization", type: Type.OBJECT, keyMap: regularizations},
     {name: "batchSize", type: Type.NUMBER},
-    {name: "dataset", type: Type.OBJECT, keyMap: datasets},
-    {name: "regDataset", type: Type.OBJECT, keyMap: regDatasets},
+    {name: "dataset", type: Type.STRING/*, keyMap: datasets*/},
+    {name: "regDataset", type: Type.STRING/*, keyMap: regDatasets*/},
     {name: "learningRate", type: Type.NUMBER},
     {name: "regularizationRate", type: Type.NUMBER},
     {name: "noise", type: Type.NUMBER},
@@ -160,8 +169,11 @@ export class State {
   sinX = false;
   cosY = false;
   sinY = false;
-  dataset: dataset.DataGenerator = dataset.classifyCircleData;
-  regDataset: dataset.DataGenerator = dataset.regressPlane;
+  //dataset: dataset.DataGenerator = dataset.classifyCircleData;
+  //regDataset: dataset.DataGenerator = dataset.regressPlane;
+  dataset = 'spiral';
+  //regDataset = 'reg_plane';
+  regDataset = 'reg_gauss';
   seed: string;
 
   /**
@@ -188,7 +200,7 @@ export class State {
       switch (type) {
         case Type.OBJECT:
           if (keyMap == null) {
-            throw Error("A key-value map must be provided for state " +
+            console.log("A key-value map must be provided for state " +
                 "variables of type Object");
           }
           if (hasKey(name) && map[name] in keyMap) {
